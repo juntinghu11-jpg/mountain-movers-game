@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#244b48">
+  <title>山顶搬家公司 · 连台带货</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <canvas id="world" aria-label="山顶图下段与前坪"></canvas>
+
+  <div id="game-ui" class="game-ui" hidden>
+    <header class="topbar panel">
+      <a class="brand" href="#" id="home-button" aria-label="打开公司菜单"><span class="brand-icon">↟</span><span>山顶搬家公司<small>v0.5 灰盒 · 连台带货</small></span></a>
+      <div class="trip-status"><span class="live-dot" id="connection-dot"></span><span id="connection-label">连接中</span><span class="divider"></span><span id="mission-heading">夜市最后一车</span></div>
+      <div id="gust-chip" class="gust-chip calm" title="垭口阵风的节奏是固定的：静 3 秒，风声变尖 2 秒，阵风 4 秒。只在垭口那一段起作用。只能躲风的车，一个静风窗口从一面挡风墙跳到下一面。"><span class="gust-flag">⚑</span><span id="gust-label">垭口 · 静</span><strong id="gust-left">3.0</strong></div>
+      <div class="top-actions"><button id="room-button" class="room-button" title="复制邀请链接"><span>邀请朋友</span><strong id="room-code">——</strong></button><button id="menu-button" class="icon-button" title="公司菜单" aria-label="公司菜单">☰</button></div>
+    </header>
+
+    <aside class="mission-card panel">
+      <div class="eyebrow"><span class="tiny-diamond"></span> 今日委托 <span id="mission-number">B2</span></div>
+      <h1 id="mission-title">夜市最后一车</h1>
+      <p id="mission-description"></p>
+      <div class="progress-track"><div id="progress-bar"></div></div>
+      <ol id="objectives" class="objectives"></ol>
+      <div class="ledger">
+        <div><strong id="stat-moves">0</strong><span>搬移次数 H</span></div>
+        <div><strong id="stat-carried">0</strong><span>手搬距离 M（米）</span></div>
+        <div><strong id="stat-time">0:00</strong><span>用时（不计分）</span></div>
+      </div>
+      <p class="mission-note" id="mission-note"></p>
+    </aside>
+
+    <aside class="card-stability panel" id="stability-card">
+      <div class="card-heading"><h2>稳度卡</h2><span id="card-vehicle" class="chip">主车</span><button class="fold-toggle" type="button" aria-label="收起或展开稳度卡" title="收起 / 展开（H 收起全部面板）"></button></div>
+      <canvas id="side-view" width="560" height="200" aria-label="车辆侧视：整组高度"></canvas>
+      <ul class="card-lines" id="card-lines"></ul>
+      <div class="bed-heading"><span>车床俯视（车尾在左）</span><span id="bed-caption"></span></div>
+      <div id="bed-grid" class="bed-grid" aria-label="车床占用"></div>
+    </aside>
+
+    <div id="warning-banner" class="warning-banner" hidden>抬轮预警！减速</div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <div class="bottom-dock">
+      <div id="drive-hud" class="drive-hud panel" hidden>
+        <div class="speed"><strong id="speed-value">0</strong><span>km/h</span></div>
+        <div class="advice"><span id="advice-label">前方没有弯</span><strong id="advice-value"></strong></div>
+        <div class="lift"><span>抬轮预警</span><div class="lift-track"><div id="lift-bar"></div></div></div>
+      </div>
+      <div class="context-bar panel"><span id="context-icon" class="context-icon">↟</span><div class="context-text"><strong id="context-title">准备出发</strong><span id="context-hint">靠近货物按 E 搬起；靠近车按 F 上车。</span></div><div id="affordances" class="affordances" aria-live="polite"></div></div>
+      <div class="control-bar"><span><kbd>WASD</kbd> 走 / 开</span><span><kbd>E</kbd> 搬 · 放 · 装卸</span><span><kbd>G</kbd> 推 / 两人抬整组</span><span><kbd>Q</kbd> 展开 / 折叠台</span><span><kbd>T</kbd> 立起 / 放倒</span><span><kbd>R</kbd> 旋转</span><span><kbd>F</kbd> 上下车</span><span><kbd>空格</kbd> 刹车</span><button id="map-button"><kbd>M</kbd> 全图</button><span><kbd>H</kbd> 收起面板</span></div>
+    </div>
+    <div class="touch-controls" id="touch-controls"><div class="touch-pad"><button data-hold="up" class="touch-up" aria-label="前进">↑</button><button data-hold="left" aria-label="左">←</button><button data-hold="down" aria-label="后退">↓</button><button data-hold="right" aria-label="右">→</button></div><div class="touch-actions"><button data-action="grip">推 / 抬</button><button data-action="fold">展 / 折</button><button data-action="tilt">立 / 倒</button><button data-action="vehicle">上下车</button><button data-action="interact" class="primary">搬运</button><button data-hold="brake">刹车</button></div></div>
+  </div>
+  <footer class="prototype-label">2D 灰盒 · 非成品画面 · 数值是待校准的占位</footer>
+
+  <div id="landing" class="overlay landing-overlay">
+    <section class="landing-card">
+      <div class="landing-intro">
+        <div class="wordmark">山顶搬家公司 <span>V0.5 灰盒</span></div>
+        <div class="mountain-mark">↟</div>
+        <h1>连台带货，<br>一路上山。</h1>
+        <p>摆得越整越省搬，装得越高越难开。<br>车、台、货共用一张稳度卡：<br>它决定能不能过老山门、弯道开多快、<br>垭口阵风来了要不要躲。</p>
+        <div class="landing-tags"><span>1–4 人</span><span>没有倒计时</span><span>侧翻可救援</span></div>
+        <div class="intro-bottom"><strong>首轮验证切片</strong><span>山顶图下段与前坪 · 教学单 + 夜市 Boss</span></div>
+      </div>
+      <div class="landing-form">
+        <div class="eyebrow">委托从这里开始</div>
+        <h2>今天，搬什么？</h2>
+        <label class="field-label" for="player-name">你的名字</label><input id="player-name" maxlength="18" autocomplete="nickname" placeholder="山路上的新朋友" value="搬家队长">
+        <fieldset><legend>选择委托</legend><div class="choice-row">
+          <label class="choice"><input type="radio" name="mission" value="o6"><span class="choice-icon">⛩</span><strong>O6 茶馆八仙桌</strong><small>教学单 · 发夹弯与第一次阵风</small></label>
+          <label class="choice selected"><input type="radio" name="mission" value="b2" checked><span class="choice-icon">✺</span><strong>B2 夜市最后一车</strong><small>Boss · 老山门、西坪与两级台阶</small></label>
+          <label class="choice wide-choice"><input type="radio" name="mission" value="b3"><span class="choice-icon">⌂</span><strong>B3 换季·公司上山</strong><small>终章 · 夜市下山进冬棚，公司上山进旧气象站。玩过 B2 后从评价卡接着开，会保留你们的夜市摆法；直接开始用"前侧摊位挡门"的摆法</small></label>
+        </div></fieldset>
+        <fieldset><legend>主车配置（出发前可在广场再换）</legend><div class="choice-row">
+          <label class="choice selected"><input type="radio" name="build" value="standard" checked><strong>普通车床</strong><small>车床 1.2 m · 装得多</small></label>
+          <label class="choice"><input type="radio" name="build" value="lowbed"><strong>低货台</strong><small>前部低段 0.75 m · 一个整组 + 一件长件</small></label>
+        </div></fieldset>
+        <label class="sound-option"><input type="checkbox" id="sound-toggle" checked> 声音：风声、车身吱嘎、抬轮警报</label>
+        <button id="create-button" class="primary wide">开门营业 <span>→</span></button>
+        <div class="join-divider"><span>朋友已经开张？</span></div>
+        <div class="join-row"><input id="join-code" maxlength="16" autocomplete="off" placeholder="输入房间码" aria-label="房间码"><button id="join-button" class="secondary">加入同行</button></div>
+        <p id="landing-error" class="form-error" role="alert" hidden></p>
+        <button id="resume-button" class="text-button wide" hidden>返回进行中的委托 →</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="menu-overlay" class="overlay" hidden><section class="small-modal">
+    <button class="modal-close" data-close="menu-overlay" aria-label="关闭">×</button>
+    <div class="eyebrow">山顶搬家公司</div><h2>歇一口气</h2>
+    <p>多人房间会继续运行。回到现场，还能接着搬。</p>
+    <div class="menu-actions">
+      <button id="continue-button" class="primary">回到现场</button>
+      <button id="build-button" class="secondary">主车换成低货台</button>
+      <button id="recover-button" class="secondary" title="开车时：车回到这一段路的停靠点，车上的货整组卸在救援坪上，要重新装车；抬轮预警中叫不了。走路时：回到上一个安全位置，手上的东西就地放下。">叫救援：车回本段停靠点，货卸在救援坪上</button>
+      <div class="order-row" role="group" aria-label="换一单"><span>换一单</span><button class="secondary" data-order="o6">O6 茶馆</button><button class="secondary" data-order="b2">B2 夜市</button><button class="secondary" data-order="b3">B3 换季</button></div>
+      <button id="restart-button" class="secondary">重新开始本次委托</button>
+      <button id="photos-button" class="secondary">车库照片墙</button>
+      <button id="export-button" class="secondary">导出这趟行程记录</button>
+      <button id="new-company-button" class="text-button">回到开始页 / 加入朋友</button>
+    </div>
+    <p class="modal-footnote">救援不扣钱。侧翻后的救援会把车上的东西卸在救援坪上，要重新装车。</p>
+  </section></div>
+
+  <div id="confirm-overlay" class="overlay" hidden><section class="small-modal">
+    <div class="eyebrow">重新出发</div><h2 id="confirm-title">重开这趟委托？</h2>
+    <p id="confirm-description">本次还未完成的进度会重置，房间里的朋友会一起回到旧夜市广场。</p>
+    <div class="modal-button-row"><button id="confirm-cancel" class="secondary">继续这趟</button><button id="confirm-ok" class="primary">重新开始</button></div>
+  </section></div>
+
+  <div id="replay-overlay" class="overlay replay-overlay" hidden><section class="replay-card">
+    <div class="eyebrow" id="replay-eyebrow">三秒回放 · 侧面机位</div>
+    <h2 id="replay-title">侧翻</h2>
+    <canvas id="replay-canvas" width="720" height="300" aria-label="侧翻回放"></canvas>
+    <p class="replay-reason" id="replay-reason"></p>
+    <p class="replay-rescue" id="replay-rescue"></p>
+    <div class="modal-button-row"><button id="replay-save" class="secondary">存进照片墙</button><button id="replay-close" class="primary">知道了（Enter）</button></div>
+  </section></div>
+
+  <div id="review-overlay" class="overlay" hidden><section class="review-card">
+    <button class="modal-close" data-close="review-overlay" aria-label="关闭">×</button>
+    <div class="completion-seal">✓</div>
+    <div class="eyebrow">客户评价卡 · 只用这一单实际发生的事</div>
+    <h2 id="review-title">新夜市开张</h2>
+    <ul id="review-lines" class="review-lines"></ul>
+    <div class="review-stats" id="review-stats"></div>
+    <div class="review-crew" id="review-crew"></div>
+    <div class="review-incidents" id="review-incidents"></div>
+    <div class="modal-button-row"><button id="review-photos" class="secondary">照片墙</button><button id="review-next" class="primary">接下一单 →</button></div>
+    <p class="modal-footnote">评价卡只是反馈，不给奖励，也不影响收入。搬移次数和手搬距离是给自己看的记录，不是分数。</p>
+  </section></div>
+
+  <div id="photos-overlay" class="overlay" hidden><section class="small-modal photos-modal">
+    <button class="modal-close" data-close="photos-overlay" aria-label="关闭">×</button>
+    <div class="eyebrow">车库照片墙 · 保存在这个浏览器</div><h2>路上的那几秒</h2>
+    <div id="photo-wall" class="photo-wall"></div>
+  </section></div>
+
+  <script type="module" src="/app.mjs"></script>
+</body>
+</html>
